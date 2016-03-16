@@ -1,0 +1,415 @@
+#!/usr/bin/env node
+
+/*
+ * gcmon - Galera Cluster Monitor
+ * (C) 2016, Krum Boychev <krum.boy4ev@gmail.com>.
+ *
+ */
+
+
+var mysql = require("mysql");
+var async = require("async");
+var jsonfile = require('jsonfile');
+var blessed = require('blessed');
+var contrib = require('blessed-contrib');
+var numbro = require('numbro');
+var commandLineArgs = require('command-line-args');
+require( "console-stamp" )( console, { pattern : "dd/mm/yyyy HH:MM:ss.l"});
+var pkginfo = require('pkginfo')(module);
+
+var utils = require('../lib/utils.js');
+
+
+var connections = {};
+var confObj = {};
+var confFile = '../etc/gcmon.json';
+var collectIntervalSec = 1;
+var verbose = false;
+var startMysqlGlobalStatusVars = {};
+var lastCheckMysqlGlobalStatusVars = {};
+
+// Table Arrays definition
+var clusterReplicationTableData = [];
+var clusterStatusTableData 		= [];
+var clusterLoadTableData 		= [];
+
+var box, clusterReplicationTable, clusterStatusTable, clusterLoadTable, textBox;
+var screen;
+
+function initTables(numberOfNodes) {
+	numberOfNodes = numberOfNodes || 0;
+
+	screen = blessed.screen({
+	  smartCSR: true
+	});
+
+	// Create a box perfectly centered horizontally and vertically.
+	box = blessed.box({
+	  label: ' Galera Cluster Monitor ',
+	  top: 'center',
+	  left: 'center',
+	  width: '100%',
+	  height: '100%',
+	  tags: true,
+	  border: { type: 'bg' }
+	});
+
+	clusterReplicationTable = contrib.table(
+	     {
+	       parent: box,
+	       label: ' Replication ',
+	       top: (6 + numberOfNodes), //  + 1 for each node
+	       left: '1%',
+		   width: '85%',
+	       height: (4 + numberOfNodes), //default 4 for 0 nodes in the table + 1 for each node
+	       keys: true,
+		   tags: true,
+		   fg: 'r', // dirty hack for default color
+	       interactive: false,
+	       border: {type: "line"},
+	       columnSpacing: 2,
+		   columnWidth: [10, 7, 7, 7, 7, 7, 7, 7, 7, 7, 5, 5, 5, 5]
+
+	 });
+
+	 clusterStatusTable = contrib.table(
+		{
+			parent: box,
+	        label: ' Status ',
+		    top: 2,
+		    left: '1%',
+		    width: '50%',
+		    height: (4 + numberOfNodes), //default 4 for 0 nodes in the table + 1 for each node
+		    keys: true,
+		    tags: true,
+		    fg: 'r',
+	        interactive: false,
+		    border: {type: "line"},
+		    columnSpacing: 2,
+		    columnWidth: [10, 8, 8, 8, 8, 5, 14]
+	  });
+
+	clusterLoadTable = contrib.table(
+			     {
+				   parent: box,
+	               label: ' Load ',
+				   top: 2,
+	               left: '51%',
+	    		   width: '35%',
+	               height: (4 + numberOfNodes),  //default 4 nodes in the table
+			       keys: true,
+	               tags: true,
+				   fg: 'r',
+				   interactive: false,
+	    		   border: {type: "line"},
+				   columnSpacing: 2,
+	 	  	  	   columnWidth: [10, 7, 5, 14]
+		  });
+
+		  // Append our box to the screen.
+	screen.append(box);
+	screen.append(clusterReplicationTable);
+	screen.append(clusterStatusTable);
+	screen.append(clusterLoadTable);
+
+	screen.key(['s'], function(ch, key) {
+
+	});
+	// Quit on Escape, q, or Control-C.
+	screen.key(['escape', 'q', 'C-c'], function(ch, key) {
+	  	  return process.exit(0);
+	  	});
+
+
+	clusterStatusTable.focus();
+
+	//create columns
+	updateClusterReplicationTable([]);
+	updateClusterStatusTable([]);
+	updateClusterLoadTable([]);
+
+	screen.render();
+}
+
+//
+function connectNode(node) {
+
+	connections[node.hostname] = mysql.createConnection({
+	  host: node.hostname,
+	  port: node.port,
+	  user: node.user,
+	  password: node.password,
+	});
+
+	connections[node.hostname].connect(function(err){
+		if (err) {
+			//return callback(err);
+			if(options['debug']) console.info("[" + node.hostname + "] Failed to connect!! Reason: " + err);
+			return;
+		}
+		if(options['debug']) console.info("[" + node.hostname + "] Connected as id " + connections[node.hostname].threadId);
+	});
+}
+
+function disconnectNodes() {
+    Object.keys(connections).forEach(function(node) {
+        connections[node].end();
+    });
+}
+
+function collectData(callback) {
+    var nodeRowPos = 0;
+
+    confObj.nodes.forEach(function(node) {
+
+		// first run, connection object is not created yet
+		if(!connections[node.hostname]) {
+			if(options['debug']) console.info("[" + node.hostname + "] Connect");
+			connectNode(node);
+		} else if(connections[node.hostname].state == "disconnected") {
+			//try to reconnect and update screen when the node is disconnected
+			if(options['debug']) console.info("[" + node.hostname + "] Node is not connected");
+			if(options['debug']) console.info("[" + node.hostname + "] Reconnect");
+
+			connectNode(node);
+		}
+		if(connections[node.hostname].state == "disconnected") {
+			if(!options['debug']) updateAllTablesNotAvailable(node.hostname, nodeRowPos);
+			nodeRowPos = nodeRowPos + 1;
+			return;
+		}
+
+        connections[node.hostname].query("show global status;", function(err, rows) {
+            var mysqlGlobalStatusVars = {};
+
+			if(options['debug']) console.info("[" + node.hostname + "] Executing query 'show global status'");
+			//if (err) return callback(err);
+			if(err) {
+				if(options['debug']) console.error("[" + node.hostname + "] Execute query error: " + err);
+				return;
+			}
+			//first run
+			if(!lastCheckMysqlGlobalStatusVars[node.hostname]) {
+				lastCheckMysqlGlobalStatusVars[node.hostname] = mysqlGlobalStatusVars;
+				startMysqlGlobalStatusVars[node.hostname] = mysqlGlobalStatusVars;
+			}
+			// Map var name to value
+            rows.forEach(function(row) {
+                mysqlGlobalStatusVars[row['Variable_name']] = row['Value'];
+            });
+			if(options['debug']) {
+				console.info("[" + node.hostname + "] Execute query return: " + Object.keys(mysqlGlobalStatusVars).length + " rows");
+				return; //skip update
+			}
+
+			// update node stats table
+            clusterReplicationTableData[this.nodeRowPos] = getClusterReplicationTableData(node.hostname, mysqlGlobalStatusVars);
+			updateClusterReplicationTable(clusterReplicationTableData);
+			//
+			clusterStatusTableData[this.nodeRowPos] = getClusterStatusTableData(node.hostname, mysqlGlobalStatusVars);
+			updateClusterStatusTable(clusterStatusTableData);
+			//
+			clusterLoadTableData[this.nodeRowPos] = getClusterLoadTableData(node.hostname, mysqlGlobalStatusVars);
+			updateClusterLoadTable(clusterLoadTableData);
+
+			lastCheckMysqlGlobalStatusVars[node.hostname] = mysqlGlobalStatusVars;
+
+        }.bind( {nodeRowPos: nodeRowPos} ));
+
+        nodeRowPos = nodeRowPos + 1;
+    });
+
+}
+
+function updateAllTablesNotAvailable(hostname, nodeRowPos) {
+
+	clusterReplicationTableData[nodeRowPos] = [utils.attention(hostname), 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A'];
+	updateClusterReplicationTable(clusterReplicationTableData);
+	//
+	clusterStatusTableData[nodeRowPos] = [utils.attention(hostname), 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A'];
+	updateClusterStatusTable(clusterStatusTableData);
+	//
+	clusterLoadTableData[nodeRowPos] = [utils.attention(hostname), 'N/A', 'N/A', 'N/A'];
+	updateClusterLoadTable(clusterLoadTableData);
+}
+
+function updateClusterReplicationTable(data) {
+	clusterReplicationTable.setData(
+	  { headers: ['|node|', '|laten|', '|o_msgs', 'o_data', 'o_que|', '|i_msgs', 'i_data', 'i_que|', '|fc_pse', 'fc_snt|',
+	  			'|lcf', 'bfa|', '|ist', 'idx|']
+	   , data: data });
+
+	screen.render();
+}
+
+function updateClusterStatusTable(data) {
+	clusterStatusTable.setData(
+	  { headers: ['|node|', '|state|', '|clu_st|', '|evs_st|', '|csize|', '|ver|', '|uptime|']
+	   , data: data });
+
+	screen.render();
+}
+
+function updateClusterLoadTable(data) {
+	clusterLoadTable.setData(
+	  { headers: ['|node|', '|thrds|', '|qrs|', '|max_con|']
+	   , data: data });
+
+	screen.render();
+}
+
+
+function getClusterLoadTableData(node, vars) {
+	var tableRow = new Array();
+
+	tableRow[0] = node;
+	tableRow[1] = vars['Threads_connected'];
+	tableRow[2] = numbro(vars['Queries'] - lastCheckMysqlGlobalStatusVars[node]['Queries']).format('0a');
+	tableRow[3] = vars['Max_used_connections'];
+
+	return tableRow;
+}
+
+function getClusterStatusTableData(node, vars) {
+	var tableRow = new Array();
+
+	tableRow[0] = node;
+	tableRow[1] = vars['wsrep_local_state_comment'];
+	tableRow[2] = vars['wsrep_cluster_status'].substring(0, 7); // cut to 8 chars
+	tableRow[3] = vars['wsrep_evs_state'].substring(0, 4);
+	tableRow[4] = vars['wsrep_cluster_size'];
+	tableRow[5] = vars['wsrep_provider_version'].substring(0, 4);
+	tableRow[6] = utils.convertUptime(vars['Uptime']);
+
+	return tableRow;
+}
+
+function getClusterReplicationTableData(node, vars) {
+
+	var tableRow = new Array();
+	tableRow[0] = node;
+
+	tableRow[1] = numbro(utils.parseLatency(vars['wsrep_evs_repl_latency'])).format('0.0a') + 'ms';
+
+	/* Outbound Group */
+	tableRow[2] = numbro(vars['wsrep_replicated'] - lastCheckMysqlGlobalStatusVars[node]['wsrep_replicated']).format('0');
+	tableRow[3] = numbro(vars['wsrep_replicated_bytes'] - lastCheckMysqlGlobalStatusVars[node]['wsrep_replicated_bytes']).format('0.0b');
+	tableRow[4] = numbro(vars['wsrep_local_send_queue_avg'] - startMysqlGlobalStatusVars[node]['wsrep_local_send_queue_avg']).format('0.00');
+
+	/* Inbound Group */
+	tableRow[5] = numbro(vars['wsrep_received'] - lastCheckMysqlGlobalStatusVars[node]['wsrep_received']).format('0');
+	tableRow[6] = numbro(vars['wsrep_received_bytes'] - lastCheckMysqlGlobalStatusVars[node]['wsrep_received_bytes']).format('0.0b');
+	tableRow[7] = numbro(vars['wsrep_local_recv_queue_avg'] - startMysqlGlobalStatusVars[node]['wsrep_local_recv_queue_avg']).format('0.00');
+
+	/* Flow control Group */
+	var fcPauseNs = (vars['wsrep_flow_control_paused_ns'] - lastCheckMysqlGlobalStatusVars[node]['wsrep_flow_control_paused_ns']);
+	tableRow[8] = numbro(fcPauseNs/1000000).format('0.0a') + 'ms';
+	var fcSent = vars['wsrep_flow_control_sent'] - startMysqlGlobalStatusVars[node]['wsrep_flow_control_sent']; //0a
+	tableRow[9] = checkThreshold('fc_snt', fcSent, '0a');
+
+	/* Conflcts Group */
+	tableRow[10] = numbro(vars['wsrep_local_cert_failures'] - lastCheckMysqlGlobalStatusVars[node]['wsrep_local_cert_failures']).format('0');
+	tableRow[11] = numbro(vars['wsrep_local_bf_aborts'] - lastCheckMysqlGlobalStatusVars[node]['wsrep_local_bf_aborts']).format('0');
+
+	/* Gcache Group */
+	tableRow[12] = numbro(vars['wsrep_last_committed'] - vars['wsrep_local_cached_downto']).format('0a');
+	tableRow[13] = numbro(vars['wsrep_cert_index_size']).format('0a');
+
+	return tableRow;
+}
+
+
+
+function checkThreshold(name, value, format) {
+	if(value > confObj.thresholds[name]) return utils.attention(numbro(value).format(format));
+	return numbro(value).format(format);
+}
+
+
+
+function main() {
+    async.waterfall([
+		//read config file
+		function (callback) {
+			jsonfile.readFile(confFile, function(err, obj) {
+		        if (err) return callback(err);
+				confObj = obj;
+				callback(null);
+			});
+		},
+		// create tables
+		function (callback) {
+			if(!options['debug']) initTables(confObj.nodes.length);
+			callback(null);
+		},
+		//collect data loop
+	    function (callback) {
+			var recursive = function () {
+				collectData(function(err) {
+					if (err) return callback(err);
+				});
+    			setTimeout(recursive,collectIntervalSec * 1000);
+			}
+			recursive();
+	    }
+  ], function (err, res) {
+        if (err) {
+			// terminate program on general error
+          	if(options['debug']) console.log("General ERROR: " + err);
+			process.exit(1);
+        }
+    });
+
+}
+
+var cli = commandLineArgs([
+  { name: 'help', alias: 'h', type: Boolean, description: 'Display this usage guide.' },
+  { name: 'version', alias: 'v', type: Boolean, description: 'Version'},
+  { name: 'debug', alias: 'd', type: Boolean, description: 'Debug communication.' },
+  { name: 'interval', alias: 'i', type: Number, description: 'Collect data interval.',typeLabel: '<seconds>'},
+  { name: 'config', alias: 'c', type: String, description: 'Config file.',typeLabel: '<file>'}
+]);
+
+function displayUsage() {
+	const options = {
+		  title: 'Description',
+		  description: {
+		    options: {
+		      columns: [
+		        { name: 'one', maxWidth: 60 }
+		      ]
+		    },
+		    data: [
+		      {
+		        one: 'gcmon(v'+ module.exports.version +') - Galera Cluster Monitor'
+		      }
+		    ]
+		  },
+		  synopsis: [
+			'$ gcmon [bold]{--help}',
+			'$ gcmon [[bold]{--config} [underline]{file}]',
+		    '$ gcmon [[bold]{--interval} [underline]{seconds}] [bold]{--debug}'
+		  ]
+		}
+	process.stdout.write(cli.getUsage(options));
+}
+
+var options = cli.parse();
+
+if(options['help']) {
+	displayUsage();
+	process.exit(0);
+}
+if(options['interval']) {
+	collectIntervalSec = options['interval'];
+}
+if(options['config']) {
+	confFile = options['config'];
+}
+if(options['version']) {
+	process.stdout.write("v" + module.exports.version + "\n");
+	process.exit(0);
+}
+
+
+main();
