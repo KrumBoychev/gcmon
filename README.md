@@ -68,7 +68,7 @@ $ ./gcmon
 
 
 
-4.For additional options check the help:
+4. For additional options check the help:
 
 ```
 $ ./gcmon -h
