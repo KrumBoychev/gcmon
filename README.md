@@ -14,7 +14,7 @@ $ npm install gcmon
 
 
 ## Usage
-1.Configure the INSTALL_DIR/gcmon/etc/gcmon.json file:
+1. Configure the INSTALL_DIR/gcmon/etc/gcmon.json file:
 
 ```json
 {
@@ -35,7 +35,7 @@ if the threshold is reached. !!! Currently the only supported param is **fc_snt*
 <img src="https://github.com/KrumBoychev/gcmon/raw/master/assets/gcmon02.png"/>
 
 
-2.Run the tool in debug mode to check if the communication with the nodes is OK:
+2. Run the tool in debug mode to check if the communication with the nodes is OK:
 
 ```
 $ ./gcmon -d  
@@ -59,7 +59,7 @@ $ ./gcmon -d
 
 ```
 
-3.After the connection verification, run the tool in ncurses mode:
+3. After the connection verification, run the tool in ncurses mode:
 
 ```
 $ ./gcmon
