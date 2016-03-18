@@ -29,6 +29,11 @@ Configure the INSTALL_DIR/gcmon/etc/gcmon.json file:
     ]
 }
 ```
+The thresholds configuration setting is used to monitor certain parameters and to highlight them on the screen
+if the threshold is reached. !!! Currently the only supported param is fc_snt!!!
+
+<img src="https://github.com/KrumBoychev/gcmon/raw/master/assets/gcmon02.png"/>
+
 
 Run the tool in debug mode to check if the communication with the nodes is OK:
 
