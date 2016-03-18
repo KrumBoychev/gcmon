@@ -5,10 +5,11 @@
 
 
 ## Overview
+Galera Cluster Monitor - gcmon is console tool for centralized monitoring of Mysql Galera cluster nodes. The tool provides the same information as [myqstatus](https://github.com/jayjanssen/myq_gadgets) on a single screen/console.
 
 ## Install
 ``` bash
-$ npm install blessed
+$ npm install gcmon
 ```
 
 
