@@ -66,9 +66,9 @@ $ npm install gcmon
 	```
 	<img src="https://github.com/KrumBoychev/gcmon/raw/master/assets/gcmon03.png"/>
 
+4. To exit from the application use **q**
 
-
-4. For additional options check the help:
+5. For additional options check the help:
 
 	```
 	$ ./gcmon -h

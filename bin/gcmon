@@ -60,7 +60,7 @@ function initTables(numberOfNodes) {
 	       label: ' Replication ',
 	       top: (6 + numberOfNodes), //  + 1 for each node
 	       left: '1%',
-		   width: '85%',
+		   width: '90%',
 	       height: (4 + numberOfNodes), //default 4 for 0 nodes in the table + 1 for each node
 	       keys: true,
 		   tags: true,
@@ -68,7 +68,7 @@ function initTables(numberOfNodes) {
 	       interactive: false,
 	       border: {type: "line"},
 	       columnSpacing: 2,
-		   columnWidth: [10, 7, 7, 7, 7, 7, 7, 7, 7, 7, 5, 5, 5, 5]
+		   columnWidth: [15, 7, 7, 7, 7, 7, 7, 7, 7, 7, 5, 5, 5, 5]
 
 	 });
 
@@ -78,7 +78,7 @@ function initTables(numberOfNodes) {
 	        label: ' Status ',
 		    top: 2,
 		    left: '1%',
-		    width: '50%',
+		    width: '55%',
 		    height: (4 + numberOfNodes), //default 4 for 0 nodes in the table + 1 for each node
 		    keys: true,
 		    tags: true,
@@ -86,7 +86,7 @@ function initTables(numberOfNodes) {
 	        interactive: false,
 		    border: {type: "line"},
 		    columnSpacing: 2,
-		    columnWidth: [10, 8, 8, 8, 8, 5, 14]
+		    columnWidth: [15, 8, 8, 8, 8, 5, 14]
 	  });
 
 	clusterLoadTable = contrib.table(
@@ -94,7 +94,7 @@ function initTables(numberOfNodes) {
 				   parent: box,
 	               label: ' Load ',
 				   top: 2,
-	               left: '51%',
+	               left: '56%',
 	    		   width: '35%',
 	               height: (4 + numberOfNodes),  //default 4 nodes in the table
 			       keys: true,
@@ -103,7 +103,7 @@ function initTables(numberOfNodes) {
 				   interactive: false,
 	    		   border: {type: "line"},
 				   columnSpacing: 2,
-	 	  	  	   columnWidth: [10, 7, 5, 14]
+	 	  	  	   columnWidth: [15, 7, 5, 14]
 		  });
 
 		  // Append our box to the screen.
@@ -161,7 +161,8 @@ function collectData(callback) {
     var nodeRowPos = 0;
 
     confObj.nodes.forEach(function(node) {
-
+		// limit the display hostname length to the last 15 chars.Normally the unique part is at the end.
+		var hostnameCutted = node.hostname.substring((node.hostname.length - 15));
 		// first run, connection object is not created yet
 		if(!connections[node.hostname]) {
 			if(options['debug']) console.info("[" + node.hostname + "] Connect");
@@ -174,7 +175,7 @@ function collectData(callback) {
 			connectNode(node);
 		}
 		if(connections[node.hostname].state == "disconnected") {
-			if(!options['debug']) updateAllTablesNotAvailable(node.hostname, nodeRowPos);
+			if(!options['debug']) updateAllTablesNotAvailable(hostnameCutted, nodeRowPos);
 			nodeRowPos = nodeRowPos + 1;
 			return;
 		}
@@ -203,13 +204,13 @@ function collectData(callback) {
 			}
 
 			// update node stats table
-            clusterReplicationTableData[this.nodeRowPos] = getClusterReplicationTableData(node.hostname, mysqlGlobalStatusVars);
+            clusterReplicationTableData[this.nodeRowPos] = getClusterReplicationTableData(hostnameCutted, mysqlGlobalStatusVars);
 			updateClusterReplicationTable(clusterReplicationTableData);
 			//
-			clusterStatusTableData[this.nodeRowPos] = getClusterStatusTableData(node.hostname, mysqlGlobalStatusVars);
+			clusterStatusTableData[this.nodeRowPos] = getClusterStatusTableData(hostnameCutted, mysqlGlobalStatusVars);
 			updateClusterStatusTable(clusterStatusTableData);
 			//
-			clusterLoadTableData[this.nodeRowPos] = getClusterLoadTableData(node.hostname, mysqlGlobalStatusVars);
+			clusterLoadTableData[this.nodeRowPos] = getClusterLoadTableData(hostnameCutted, mysqlGlobalStatusVars);
 			updateClusterLoadTable(clusterLoadTableData);
 
 			lastCheckMysqlGlobalStatusVars[node.hostname] = mysqlGlobalStatusVars;

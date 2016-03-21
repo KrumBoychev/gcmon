@@ -17,21 +17,21 @@
   ],
   "author": "Krum Boychev <krum.boy4ev@gmail.com>",
   "repository": {
-    "type": "git",
-    "url": "https://github.com/KrumBoychev/gcmon.git"
+	    "type": "git",
+	    "url": "https://github.com/KrumBoychev/gcmon.git"
   },
   "homepage": "https://github.com/KrumBoychev/gcmon",
   "license": "MIT",
   "dependencies": {
-    "mysql": "~2.10.2",
-    "jsonfile": "~2.2.3",
-    "pkginfo": "~0.4.0",
-    "async": "~1.5.2",
-    "numbro": "~1.6.2",
-    "blessed": "~0.1.81",
-    "console-stamp": "~0.2.0",
-    "command-line-args": "~2.1.6",
-    "blessed-contrib": "~3.5.4"
+	    "mysql": "~2.10.2",
+	    "jsonfile": "~2.2.3",
+	    "pkginfo": "~0.4.0",
+	    "async": "~1.5.2",
+	    "numbro": "~1.6.2",
+	    "blessed": "~0.1.81",
+	    "console-stamp": "~0.2.0",
+	    "command-line-args": "~2.1.6",
+	    "blessed-contrib": "~3.5.4"
 	},
 	"engines": {
    		"node": ">= 0.8.0"
