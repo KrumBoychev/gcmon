@@ -45,7 +45,7 @@ function initTables(numberOfNodes) {
 
 	// Create a box perfectly centered horizontally and vertically.
 	box = blessed.box({
-	  label: ' Galera Cluster Monitor ',
+	  label: ' Galera Cluster Monitor (v' + module.exports.version + ')',
 	  top: 'center',
 	  left: 'center',
 	  width: '100%',
