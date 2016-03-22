@@ -61,6 +61,20 @@ $ npm install gcmon
 
 3. After the connection verification, run the tool in ncurses mode:
 
+
+	**NOTE!!!**
+
+>  Many SSH emulators like **Putty** will use UTF-8 mode. This in turn
+> will result in the session not use the correct character set.  Ncurses
+> attempts to use the "graphical" character set for drawing lines. Which
+> results in alpha and numeric characters when executing the ncurses
+> environment. One of the possible solutions is to export
+> **NCURSES_NO_UTF8_ACS=1** to your .bashrc.
+>[putty-utf8-and-ncurses](https://thesorcerer.wordpress.com/2015/04/01/how-to-solve-some-graphical-issues-with-putty-utf8-and-ncurses/)
+
+
+
+
 	```
 	$ ./gcmon
 	```
