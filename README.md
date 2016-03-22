@@ -14,7 +14,8 @@ $ npm install gcmon
 
 
 ## Usage
-1. Configure the INSTALL_DIR/gcmon/etc/gcmon.json file:
+
+ 1. Configure the INSTALL_DIR/gcmon/etc/gcmon.json file:
 
 	```json
 	{
@@ -35,7 +36,7 @@ $ npm install gcmon
 	<img src="https://github.com/KrumBoychev/gcmon/raw/master/assets/gcmon02.png"/>
 
 
-2. Run the tool in debug mode to check if the communication with the nodes is OK:
+ 2. Run the tool in debug mode to check if the communication with the nodes is OK:
 
 	```
 	$ ./gcmon -d  
@@ -59,50 +60,47 @@ $ npm install gcmon
 
 	```
 
-3. After the connection verification, run the tool in ncurses mode:
-
-
-	**NOTE!!!**
-
->  Many SSH emulators like **Putty** will use UTF-8 mode. This in turn
-> will result in the session not use the correct character set.  Ncurses
-> attempts to use the "graphical" character set for drawing lines. Which
-> results in alpha and numeric characters when executing the ncurses
-> environment. One of the possible solutions is to export
-> **NCURSES_NO_UTF8_ACS=1** to your .bashrc.
->[putty-utf8-and-ncurses](https://thesorcerer.wordpress.com/2015/04/01/how-to-solve-some-graphical-issues-with-putty-utf8-and-ncurses/)
-
-
-
-
+ 3. After the connection verification, run the tool in ncurses mode:
+	
+	
+		**NOTE!!!**
+	
+	>  Many SSH emulators like **Putty** will use UTF-8 mode. This in turn
+	> will result in the session not use the correct character set.  Ncurses
+	> attempts to use the "graphical" character set for drawing lines. Which
+	> results in alpha and numeric characters when executing the ncurses
+	> environment. One of the possible solutions is to export
+	> **NCURSES_NO_UTF8_ACS=1** to your .bashrc.
+	[putty-utf8-and-ncurses](https://thesorcerer.wordpress.com/2015/04/01/how-to-solve-some-graphical-issues-with-putty-utf8-and-ncurses/)
+	
 	```
-	$ ./gcmon
+	 $ ./gcmon
 	```
+    
 	<img src="https://github.com/KrumBoychev/gcmon/raw/master/assets/gcmon03.png"/>
 
-4. To exit from the application use **q**
-
-5. For additional options check the help:
-
+ 4. To exit from the application use **q**
+	
+ 5. For additional options check the help:
 	```
 	$ ./gcmon -h
-
-	Description
-
-	  gcmon(v1.0.0) -Galera Cluster Monitor  
-
-	Synopsis
-
-	  $ gcmon --help
-	  $ gcmon [--config file]
-	  $ gcmon [--interval seconds] --debug
-
-	Options
-
-	  -h, --help                 Display this usage guide.
-	  -v, --version              Version                   
-	  -d, --debug                Debug communication.      
-	  -i, --interval <seconds>   Collect data interval.    
-	  -c, --config <file>        Config file.
-
-	  ```
+	
+		Description
+	
+		  gcmon(v1.0.0) -Galera Cluster Monitor  
+	
+		Synopsis
+	
+		  $ gcmon --help
+		  $ gcmon [--config file]
+		  $ gcmon [--interval seconds] --debug
+	
+		Options
+	
+		  -h, --help                 Display this usage guide.
+		  -v, --version              Version                   
+		  -d, --debug                Debug communication.      
+		  -i, --interval <seconds>   Collect data interval.    
+		  -c, --config <file>        Config file.
+```
+	  
